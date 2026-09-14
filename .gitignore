@@ -1,0 +1,6 @@
+bin/
+obj/
+.vs/
+*.user
+codex-watchdog.jsonl
+codex-watchdog.stop
