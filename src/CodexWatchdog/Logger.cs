@@ -9,6 +9,9 @@ public sealed class Logger : IDisposable
     private readonly StreamWriter writer;
     private readonly bool verbose;
     private readonly object sync = new();
+    private WatchdogState currentState = WatchdogState.STOPPED;
+    private int currentIteration;
+    private string lastEvent = "Starting";
 
     public Logger(string path, bool verbose)
     {
@@ -32,12 +35,27 @@ public sealed class Logger : IDisposable
         lock (sync)
         {
             writer.WriteLine(entry);
+            currentState = state; currentIteration = iteration; lastEvent = error.Length > 0 ? error : evt;
             var limit = verbose ? 2000 : 400;
             var message = $"[{timestamp:HH:mm:ss}] State: {state} | Iteration: {iteration} | {SafeText(evt, limit)}";
             if (action.Length > 0) message += $" | Action: {SafeText(action, limit)}";
             if (error.Length > 0) message += $" | Error: {SafeText(error, limit)}";
-            Console.WriteLine(message);
+            if (!Console.IsOutputRedirected) RenderDashboard(); else Console.WriteLine(message);
         }
+    }
+
+    private void RenderDashboard()
+    {
+        Console.CursorVisible = false;
+        Console.Clear();
+        Console.WriteLine("╭──────────── CODEX WATCHDOG ────────────╮");
+        Console.WriteLine($"│ State:     {currentState,-29}│");
+        Console.WriteLine($"│ Iteration: {currentIteration,-29}│");
+        Console.WriteLine("│                                      │");
+        Console.WriteLine($"│ Last event: {SafeText(lastEvent, 26),-26} │");
+        Console.WriteLine("│                                      │");
+        Console.WriteLine("│ Ctrl+C or create stop file to stop.  │");
+        Console.WriteLine("╰──────────────────────────────────────╯");
     }
 
     private static string SafeText(string value, int limit)
